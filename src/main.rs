@@ -235,6 +235,354 @@ async fn run_action(instance: &Instance, settings: &CommandSettings, to_inspecto
     report(instance, settings, result, to_inspector).await;
 }
 
+/// Run a command assembled by one of the focused Stream Deck actions.  The generic action still
+/// accepts arbitrary JSON arguments, while these actions build only documented PdfCraft commands.
+async fn run_arguments(
+    instance: &Instance,
+    settings: &CommandSettings,
+    arguments: Result<Vec<String>, ExecutionError>,
+    to_inspector: bool,
+) {
+    let result = match arguments {
+        Ok(arguments) => execute(settings, arguments).await,
+        Err(error) => Err(error),
+    };
+    report(instance, settings, result, to_inspector).await;
+}
+
+fn required(value: &str, name: &str) -> Result<String, ExecutionError> {
+    let value = value.trim();
+    (!value.is_empty())
+        .then(|| value.to_string())
+        .ok_or_else(|| ExecutionError::Configuration(format!("{name} is required.")))
+}
+
+fn nonempty_lines(value: &str) -> Vec<String> {
+    value
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .map(str::to_string)
+        .collect()
+}
+
+#[derive(Clone, Deserialize, Serialize)]
+#[serde(default, rename_all = "camelCase")]
+struct PdfWorkflowSettings {
+    executable: String,
+    operation: String,
+    input: String,
+    additional_inputs: String,
+    output: String,
+    pages: String,
+    every: u64,
+    rotation: i16,
+    dpi: u16,
+    password: String,
+    title: String,
+    show_output: bool,
+    timeout_seconds: u64,
+}
+
+impl Default for PdfWorkflowSettings {
+    fn default() -> Self {
+        Self {
+            executable: String::new(),
+            operation: "extract".to_string(),
+            input: String::new(),
+            additional_inputs: String::new(),
+            output: String::new(),
+            pages: "1".to_string(),
+            every: 10,
+            rotation: 90,
+            dpi: 144,
+            password: String::new(),
+            title: String::new(),
+            show_output: false,
+            timeout_seconds: 60,
+        }
+    }
+}
+
+impl PdfWorkflowSettings {
+    fn command_settings(&self) -> CommandSettings {
+        CommandSettings {
+            executable: self.executable.clone(),
+            arguments: DEFAULT_ARGUMENTS.to_string(),
+            working_directory: String::new(),
+            title: self.title.clone(),
+            show_output: self.show_output,
+            timeout_seconds: self.timeout_seconds,
+        }
+    }
+
+    fn arguments(&self) -> Result<Vec<String>, ExecutionError> {
+        let input = required(&self.input, "Input PDF")?;
+        let output = |label: &str| required(&self.output, label);
+        let password = |args: &mut Vec<String>| {
+            if !self.password.is_empty() {
+                args.extend(["--password".to_string(), self.password.clone()]);
+            }
+        };
+        match self.operation.as_str() {
+            "combine" => {
+                let mut args = vec!["combine".to_string(), input];
+                args.extend(nonempty_lines(&self.additional_inputs));
+                if args.len() < 3 {
+                    return Err(ExecutionError::Configuration(
+                        "Combine needs an input PDF plus at least one additional PDF (one path per line).".into(),
+                    ));
+                }
+                args.extend(["--out".to_string(), output("Combined PDF output")?]);
+                Ok(args)
+            }
+            "extract" => {
+                let pages = required(&self.pages, "Pages (for example 1,3,5)")?;
+                let mut args = vec![
+                    "extract".to_string(),
+                    input,
+                    "--pages".to_string(),
+                    pages,
+                    "--out".to_string(),
+                    output("Extracted PDF output")?,
+                ];
+                password(&mut args);
+                Ok(args)
+            }
+            "split" => {
+                if self.every == 0 {
+                    return Err(ExecutionError::Configuration(
+                        "Pages per split must be at least 1.".into(),
+                    ));
+                }
+                let mut args = vec![
+                    "split".to_string(),
+                    input,
+                    "--every".to_string(),
+                    self.every.to_string(),
+                    "--out-dir".to_string(),
+                    output("Output directory")?,
+                ];
+                password(&mut args);
+                Ok(args)
+            }
+            "rotate" => {
+                let pages = required(&self.pages, "Pages to rotate")?;
+                if !matches!(self.rotation, 90 | 180 | 270 | -90) {
+                    return Err(ExecutionError::Configuration(
+                        "Rotation must be 90, 180, 270, or -90 degrees.".into(),
+                    ));
+                }
+                let mut args = vec![
+                    "edit".to_string(),
+                    input,
+                    "--rotate".to_string(),
+                    format!("{pages}:{}", self.rotation),
+                    "--out".to_string(),
+                    output("Rotated PDF output")?,
+                ];
+                password(&mut args);
+                Ok(args)
+            }
+            "render" => {
+                let page = required(&self.pages, "Page number")?;
+                if self.dpi == 0 {
+                    return Err(ExecutionError::Configuration(
+                        "PNG DPI must be at least 1.".into(),
+                    ));
+                }
+                let mut args = vec![
+                    "render".to_string(),
+                    input,
+                    "--page".to_string(),
+                    page,
+                    "--dpi".to_string(),
+                    self.dpi.to_string(),
+                    "--out".to_string(),
+                    output("PNG output")?,
+                ];
+                password(&mut args);
+                Ok(args)
+            }
+            "audit" => {
+                let mut args = vec!["audit".to_string(), input];
+                password(&mut args);
+                Ok(args)
+            }
+            _ => Err(ExecutionError::Configuration(
+                "Choose a PdfCraft workflow operation.".into(),
+            )),
+        }
+    }
+}
+
+#[derive(Clone, Deserialize, Serialize)]
+#[serde(default, rename_all = "camelCase")]
+struct PdfAppSettings {
+    executable: String,
+    control_file: String,
+    command: String,
+    title: String,
+    show_output: bool,
+    timeout_seconds: u64,
+}
+
+impl Default for PdfAppSettings {
+    fn default() -> Self {
+        Self {
+            executable: String::new(),
+            control_file: String::new(),
+            command: "highlight".to_string(),
+            title: String::new(),
+            show_output: false,
+            timeout_seconds: 30,
+        }
+    }
+}
+
+impl PdfAppSettings {
+    fn command_settings(&self) -> CommandSettings {
+        CommandSettings {
+            executable: self.executable.clone(),
+            arguments: DEFAULT_ARGUMENTS.to_string(),
+            working_directory: String::new(),
+            title: self.title.clone(),
+            show_output: self.show_output,
+            timeout_seconds: self.timeout_seconds,
+        }
+    }
+
+    fn arguments(&self) -> Result<Vec<String>, ExecutionError> {
+        let control = required(&self.control_file, "PdfCraft control file")?;
+        let mut args = vec!["ui".to_string(), "--control".to_string(), control];
+        match self.command.as_str() {
+            "previous_page" => args.extend(["key".to_string(), "key=ArrowLeft".to_string()]),
+            "next_page" => args.extend(["key".to_string(), "key=ArrowRight".to_string()]),
+            "read_mode" => args.extend(["command".to_string(), "id=view.read_mode".to_string()]),
+            "organize" => args.extend(["command".to_string(), "id=page.organize".to_string()]),
+            "rotate_cw" => args.extend(["command".to_string(), "id=page.rotate".to_string()]),
+            "rotate_ccw" => args.extend(["command".to_string(), "id=page.rotate_ccw".to_string()]),
+            "comments" => args.extend(["command".to_string(), "id=comment.list".to_string()]),
+            "highlight" => args.extend(["command".to_string(), "id=comment.highlight".to_string()]),
+            "rectangle" => args.extend(["command".to_string(), "id=comment.square".to_string()]),
+            "redact" => args.extend(["command".to_string(), "id=redact.mark".to_string()]),
+            // PdfCraft itself displays the irreversible-action confirmation.
+            "apply_redactions" => {
+                args.extend(["command".to_string(), "id=redact.apply".to_string()])
+            }
+            "save" => args.extend(["command".to_string(), "id=file.save".to_string()]),
+            _ => {
+                return Err(ExecutionError::Configuration(
+                    "Choose a PdfCraft app command.".into(),
+                ))
+            }
+        }
+        Ok(args)
+    }
+}
+
+#[derive(Clone, Deserialize, Serialize)]
+#[serde(default, rename_all = "camelCase")]
+struct PdfRotarySettings {
+    executable: String,
+    control_file: String,
+    mode: String,
+    step: u8,
+    press: String,
+    title: String,
+    timeout_seconds: u64,
+}
+
+impl Default for PdfRotarySettings {
+    fn default() -> Self {
+        Self {
+            executable: String::new(),
+            control_file: String::new(),
+            mode: "zoom".to_string(),
+            step: 1,
+            press: "fit_width".to_string(),
+            title: "PDF Zoom".to_string(),
+            timeout_seconds: 30,
+        }
+    }
+}
+
+impl PdfRotarySettings {
+    fn command_settings(&self) -> CommandSettings {
+        CommandSettings {
+            executable: self.executable.clone(),
+            arguments: DEFAULT_ARGUMENTS.to_string(),
+            working_directory: String::new(),
+            title: self.title.clone(),
+            show_output: false,
+            timeout_seconds: self.timeout_seconds,
+        }
+    }
+
+    fn control(&self) -> Result<String, ExecutionError> {
+        required(&self.control_file, "PdfCraft control file")
+    }
+
+    fn tick_arguments(&self, ticks: i16) -> Result<Vec<String>, ExecutionError> {
+        let control = self.control()?;
+        let forward = ticks >= 0;
+        let mut args = vec!["ui".to_string(), "--control".to_string(), control];
+        match self.mode.as_str() {
+            "zoom" => {
+                args.extend([
+                    "key".to_string(),
+                    format!("key={}", if forward { "Plus" } else { "Minus" }),
+                    "modifiers=[\"command\"]".to_string(),
+                ]);
+            }
+            "page" => args.extend([
+                "key".to_string(),
+                format!("key={}", if forward { "ArrowRight" } else { "ArrowLeft" }),
+            ]),
+            "rotate" => args.extend([
+                "command".to_string(),
+                format!(
+                    "id={}",
+                    if forward {
+                        "page.rotate"
+                    } else {
+                        "page.rotate_ccw"
+                    }
+                ),
+            ]),
+            _ => {
+                return Err(ExecutionError::Configuration(
+                    "Rotary mode must be zoom, page, or rotate.".into(),
+                ))
+            }
+        }
+        Ok(args)
+    }
+
+    fn press_arguments(&self) -> Result<Vec<String>, ExecutionError> {
+        let control = self.control()?;
+        let command = match self.press.as_str() {
+            "fit_width" => "view.fit_width_scrolling",
+            "fit_page" => "view.fit_one_page",
+            "read_mode" => "view.read_mode",
+            "organize" => "page.organize",
+            "none" => return Ok(Vec::new()),
+            _ => {
+                return Err(ExecutionError::Configuration(
+                    "Choose a rotary press action.".into(),
+                ))
+            }
+        };
+        Ok(vec![
+            "ui".to_string(),
+            "--control".to_string(),
+            control,
+            "command".to_string(),
+            format!("id={command}"),
+        ])
+    }
+}
+
 fn catalog_items(stdout: &str) -> Vec<Value> {
     let Ok(value) = serde_json::from_str::<Value>(stdout) else {
         return Vec::new();
@@ -352,6 +700,147 @@ impl Action for RunPdfCraftCli {
     }
 }
 
+struct PdfWorkflow;
+
+#[async_trait]
+impl Action for PdfWorkflow {
+    const UUID: &'static str = "wt.luizgustavo.getcraft.pdfcraft.workflow";
+    type Settings = PdfWorkflowSettings;
+
+    async fn key_down(
+        &self,
+        instance: &Instance,
+        settings: &Self::Settings,
+    ) -> OpenActionResult<()> {
+        let command = settings.command_settings();
+        run_arguments(instance, &command, settings.arguments(), false).await;
+        Ok(())
+    }
+
+    async fn dial_down(
+        &self,
+        instance: &Instance,
+        settings: &Self::Settings,
+    ) -> OpenActionResult<()> {
+        self.key_down(instance, settings).await
+    }
+
+    async fn will_appear(
+        &self,
+        instance: &Instance,
+        settings: &Self::Settings,
+    ) -> OpenActionResult<()> {
+        let title = if settings.title.trim().is_empty() {
+            "PDF Workflow"
+        } else {
+            settings.title.trim()
+        };
+        let _ = instance.set_title(Some(title.to_string()), None).await;
+        Ok(())
+    }
+}
+
+struct PdfAppCommand;
+
+#[async_trait]
+impl Action for PdfAppCommand {
+    const UUID: &'static str = "wt.luizgustavo.getcraft.pdfcraft.appcommand";
+    type Settings = PdfAppSettings;
+
+    async fn key_down(
+        &self,
+        instance: &Instance,
+        settings: &Self::Settings,
+    ) -> OpenActionResult<()> {
+        let command = settings.command_settings();
+        run_arguments(instance, &command, settings.arguments(), false).await;
+        Ok(())
+    }
+
+    async fn dial_down(
+        &self,
+        instance: &Instance,
+        settings: &Self::Settings,
+    ) -> OpenActionResult<()> {
+        self.key_down(instance, settings).await
+    }
+
+    async fn will_appear(
+        &self,
+        instance: &Instance,
+        settings: &Self::Settings,
+    ) -> OpenActionResult<()> {
+        let title = if settings.title.trim().is_empty() {
+            "PDF Tool"
+        } else {
+            settings.title.trim()
+        };
+        let _ = instance.set_title(Some(title.to_string()), None).await;
+        Ok(())
+    }
+}
+
+struct PdfRotary;
+
+#[async_trait]
+impl Action for PdfRotary {
+    const UUID: &'static str = "wt.luizgustavo.getcraft.pdfcraft.rotary";
+    type Settings = PdfRotarySettings;
+
+    async fn dial_rotate(
+        &self,
+        instance: &Instance,
+        settings: &Self::Settings,
+        ticks: i16,
+        _pressed: bool,
+    ) -> OpenActionResult<()> {
+        if ticks == 0 {
+            return Ok(());
+        }
+        // A physical encoder can coalesce turns. Bound the burst so a stuck device cannot flood
+        // the app, while preserving the direction and the configured sensitivity.
+        let count = usize::from(ticks.unsigned_abs())
+            .saturating_mul(usize::from(settings.step.max(1)))
+            .min(32);
+        let command = settings.command_settings();
+        for _ in 0..count {
+            run_arguments(instance, &command, settings.tick_arguments(ticks), false).await;
+        }
+        Ok(())
+    }
+
+    async fn dial_down(
+        &self,
+        instance: &Instance,
+        settings: &Self::Settings,
+    ) -> OpenActionResult<()> {
+        let args = settings.press_arguments();
+        if matches!(args, Ok(ref values) if values.is_empty()) {
+            return Ok(());
+        }
+        let command = settings.command_settings();
+        run_arguments(instance, &command, args, false).await;
+        Ok(())
+    }
+
+    async fn key_down(
+        &self,
+        instance: &Instance,
+        settings: &Self::Settings,
+    ) -> OpenActionResult<()> {
+        self.dial_down(instance, settings).await
+    }
+
+    async fn will_appear(
+        &self,
+        instance: &Instance,
+        settings: &Self::Settings,
+    ) -> OpenActionResult<()> {
+        let _ = instance.set_title(Some(settings.title.clone()), None).await;
+        Ok(())
+    }
+}
+
 #[tokio::main]
 async fn main() -> OpenActionResult<()> {
     let _ = TermLogger::init(
@@ -361,6 +850,9 @@ async fn main() -> OpenActionResult<()> {
         ColorChoice::Never,
     );
     register_action(RunPdfCraftCli).await;
+    register_action(PdfWorkflow).await;
+    register_action(PdfAppCommand).await;
+    register_action(PdfRotary).await;
     run(std::env::args().collect()).await
 }
 
@@ -406,6 +898,48 @@ mod tests {
             }
             .timeout(),
             Duration::from_secs(1)
+        );
+    }
+
+    #[test]
+    fn builds_an_extract_workflow_without_a_shell() {
+        let settings = PdfWorkflowSettings {
+            input: "in.pdf".into(),
+            output: "out.pdf".into(),
+            pages: "1,3".into(),
+            ..Default::default()
+        };
+        assert_eq!(
+            settings.arguments().unwrap(),
+            ["extract", "in.pdf", "--pages", "1,3", "--out", "out.pdf"]
+        );
+    }
+
+    #[test]
+    fn refuses_a_destructive_workflow_without_a_new_output_path() {
+        let settings = PdfWorkflowSettings {
+            input: "in.pdf".into(),
+            ..Default::default()
+        };
+        assert!(settings.arguments().is_err());
+    }
+
+    #[test]
+    fn rotary_page_control_uses_real_ui_key_events() {
+        let settings = PdfRotarySettings {
+            control_file: "/home/me/.pdfcraft-control.json".into(),
+            mode: "page".into(),
+            ..Default::default()
+        };
+        assert_eq!(
+            settings.tick_arguments(-1).unwrap(),
+            [
+                "ui",
+                "--control",
+                "/home/me/.pdfcraft-control.json",
+                "key",
+                "key=ArrowLeft"
+            ]
         );
     }
 }

@@ -8,7 +8,10 @@ Each action stores an executable path and a JSON array of arguments. The plugin 
 
 ## Features
 
-- One configurable **Run PdfCraft CLI** action for keypad keys and encoders.
+- Focused **PDF Workflow** action: combine, extract, split, rotate into a new file, render a page to PNG, and audit for faux redactions.
+- **PdfCraft App Tool** action for an open window: page navigation, organize/rotate pages, comments and highlight tools, redaction mode, and save.
+- **PdfCraft Rotary** action for D200X and other encoders: turn to zoom, move pages, or rotate pages; press for a fitted view, Read mode, or Organize Pages.
+- One configurable **Run PdfCraft CLI** action remains for advanced and future CLI features.
 - Supports every PdfCraft CLI subcommand, option, and future addition: the action forwards the exact JSON argument array you configure.
 - Loads the installed CLI's command or tool catalog in the Property Inspector and creates an app-specific, editable action template.
 - Configurable executable path, working directory, timeout (1–300 seconds), label, and optional output summary on the key.
@@ -40,6 +43,18 @@ The **Arguments** field must contain a JSON array of strings. It is not a shell 
 Use the exact argument syntax shown by `pdfcraft-cli --help` for project, file, export, and live-app control operations. The generic array accepts every documented subcommand and option.
 
 The Property Inspector's **Load command catalog** button asks the installed CLI for the catalog supported by this application. Selecting an ID fills an app-specific, editable argument template; use **Test command** after adding the parameters and options required by your installed CLI version. The generic JSON array remains the canonical path to every CLI capability.
+
+## Purpose-built Stream Deck actions
+
+Use **PDF Workflow** when a key should perform a repeatable file operation. It always asks for a separate output file or directory before it runs a write: choose Extract with `1,3,5`, Split every `10` pages, Combine (one extra path per line), Rotate selected pages, or Render a review PNG. **Audit redactions** deliberately has no output field and returns an alert when it finds a faux or unapplied redaction.
+
+Use **PdfCraft App Tool** and **PdfCraft Rotary** with an already-running app started as:
+
+```bash
+pdfcraft --control ~/.pdfcraft-control.json
+```
+
+Enter that same private control-file path in the action. The CLI verifies it is a regular, owner-only file before it sends a command. The redaction command selects or opens the native redaction workflow; **Apply redactions** opens PdfCraft's own confirmation instead of silently destroying document content.
 
 ## CI/CD and release
 
@@ -98,7 +113,10 @@ Cada ação guarda o executável e uma lista JSON de argumentos. O plugin chama 
 
 ## Recursos
 
-- Ação configurável **Run PdfCraft CLI** para teclas e encoders.
+- Ação focada **PDF Workflow** para combinar, extrair, dividir, girar em um novo arquivo, renderizar uma página em PNG e auditar falsas redações.
+- **PdfCraft App Tool** para uma janela aberta: navegar páginas, organizar/girar páginas, comentários, destaque, redação e salvar.
+- **PdfCraft Rotary** para D200X e outros encoders: gire para zoom, páginas ou rotação; pressione para ajuste de visualização, modo leitura ou Organizar páginas.
+- Ação avançada **Run PdfCraft CLI** continua disponível para comandos livres e recursos futuros.
 - Todos os subcomandos, opções e futuras adições da CLI: a ação repassa exatamente o vetor JSON configurado.
 - Catálogo dinâmico de comandos ou ferramentas da CLI no Property Inspector, com modelo de ação editável e específico do aplicativo.
 - Caminho do executável, diretório de trabalho, timeout (1–300 s), rótulo e resumo de saída configuráveis.
@@ -126,6 +144,18 @@ O campo **Arguments** precisa ser um vetor JSON de strings; ele não é um coman
 Use a sintaxe exata de `pdfcraft-cli --help` para operações de projeto, arquivo, exportação e controle do aplicativo em execução. O vetor genérico aceita todos os subcomandos e opções documentados.
 
 **Load command catalog** consulta a CLI instalada pelo catálogo compatível com este aplicativo. Ao escolher um ID, o inspetor preenche um modelo de argumentos específico e editável; use **Test command** depois de adicionar os parâmetros e opções exigidos pela versão instalada da CLI. O vetor JSON genérico continua sendo o caminho para toda a CLI.
+
+## Ações práticas para o Stream Deck
+
+Use **PDF Workflow** para uma operação de arquivo repetível. Ele sempre pede um arquivo ou diretório de saída separado antes de escrever: escolha Extract com `1,3,5`, Split a cada `10` páginas, Combine (um caminho adicional por linha), Rotate ou Render uma imagem PNG. **Audit redactions** não pede saída e aciona alerta quando encontra uma redação falsa ou ainda não aplicada.
+
+Para **PdfCraft App Tool** e **PdfCraft Rotary**, inicie o aplicativo com um arquivo de controle privado:
+
+```bash
+pdfcraft --control ~/.pdfcraft-control.json
+```
+
+Informe o mesmo caminho na ação. A CLI verifica que o arquivo é regular e acessível somente ao seu usuário. O comando de redação abre o fluxo nativo; **Apply redactions** abre a confirmação do próprio PdfCraft, sem remover conteúdo silenciosamente.
 
 ## CI/CD, roadmap e contribuição
 

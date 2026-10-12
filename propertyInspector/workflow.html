@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>PDF Workflow</title><link rel="stylesheet" href="run.css"></head>
+<body><main>
+  <h1>PDF Workflow</h1>
+  <p class="hint">Each operation creates a separate output. It never uses a shell.</p>
+  <label>CLI executable<input id="executable" placeholder="pdfcraft-cli"></label>
+  <label>Operation<select id="operation"><option value="extract">Extract selected pages</option><option value="combine">Combine PDFs</option><option value="split">Split every N pages</option><option value="rotate">Rotate pages to a new PDF</option><option value="render">Render one page to PNG</option><option value="audit">Audit redactions</option></select></label>
+  <label>Input PDF<input id="input" placeholder="/home/me/Documents/report.pdf"></label>
+  <label>Additional PDFs <span class="optional">combine only, one path per line</span><textarea id="additionalInputs" rows="3" spellcheck="false"></textarea></label>
+  <label>Output file or directory <span class="optional">not used by audit</span><input id="output" placeholder="/home/me/Documents/output.pdf"></label>
+  <div class="grid"><label>Pages <span class="optional">extract/rotate, or page for PNG</span><input id="pages" value="1" placeholder="1,3,5"></label><label>Every N pages <span class="optional">split only</span><input id="every" type="number" min="1" value="10"></label></div>
+  <div class="grid"><label>Rotation <span class="optional">rotate only</span><select id="rotation"><option value="90">90° clockwise</option><option value="180">180°</option><option value="270">270° clockwise</option><option value="-90">90° counter-clockwise</option></select></label><label>PNG DPI <span class="optional">render only</span><input id="dpi" type="number" min="1" value="144"></label></div>
+  <label>Password <span class="optional">optional; kept in this key's settings</span><input id="password" type="password"></label>
+  <div class="grid"><label>Key title <input id="title" placeholder="Extract pages"></label><label>Timeout (seconds)<input id="timeoutSeconds" type="number" min="1" max="300" value="60"></label></div>
+  <label class="check"><input id="showOutput" type="checkbox"><span>Show result on key</span></label><p id="status" role="status">Configure the operation, then press the key.</p>
+</main><script src="shared.js"></script><script>PdfDeck.bind(["executable","operation","input","additionalInputs","output","pages","every","rotation","dpi","password","title","timeoutSeconds","showOutput"], {operation:"extract",pages:"1",every:10,rotation:90,dpi:144,timeoutSeconds:60});</script></body></html>
