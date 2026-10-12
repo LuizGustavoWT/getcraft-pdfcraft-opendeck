@@ -8,6 +8,7 @@ Each action stores an executable path and a JSON array of arguments. The plugin 
 
 ## Features
 
+- **Open PdfCraft** starts the desktop app and creates its private, authenticated control file; PdfCraft deliberately selects the loopback port itself for each launch.
 - Focused **PDF Workflow** action: combine, extract, split, rotate into a new file, render a page to PNG, and audit for faux redactions.
 - **PdfCraft App Tool** action for an open window: page navigation, organize/rotate pages, comments and highlight tools, redaction mode, and save.
 - **PdfCraft Rotary** action for D200X and other encoders: turn to zoom, move pages, or rotate pages; press for a fitted view, Read mode, or Organize Pages.
@@ -30,8 +31,8 @@ Live controls need a PdfCraft window started with a private control file, for ex
 
 1. Download `getcraft-pdfcraft-opendeck-linux-x86_64.zip` from the [latest release](../../releases/latest).
 2. In OpenDeck, open **Plugins** → **Install from file** and select the ZIP. Do not extract or rename the `.sdPlugin` directory.
-3. Drag **PdfCraft CLI → Run PdfCraft CLI** to a key.
-4. Enter the CLI path if `pdfcraft-cli` is not in `PATH`, then enter a JSON argument array.
+3. Drag **PdfCraft Controls → Open PdfCraft** to a key and enter an absolute private control-file path, then press it.
+4. Reuse that file in **PdfCraft App Tool** or **PdfCraft Rotary**; keep **Run PdfCraft CLI** for an arbitrary headless operation.
 5. Use **Test command**. A green check means the CLI exited successfully; an alert means that its error summary is available in the Property Inspector and OpenDeck logs.
 
 ## Configuration and examples
@@ -115,6 +116,7 @@ Cada ação guarda o executável e uma lista JSON de argumentos. O plugin chama 
 
 ## Recursos
 
+- **Open PdfCraft** abre o aplicativo e cria seu arquivo privado autenticado de controle; o PdfCraft escolhe a porta loopback em cada abertura.
 - Ação focada **PDF Workflow** para combinar, extrair, dividir, girar em um novo arquivo, renderizar uma página em PNG e auditar falsas redações.
 - **PdfCraft App Tool** para uma janela aberta: navegar páginas, organizar/girar páginas, comentários, destaque, redação e salvar.
 - **PdfCraft Rotary** para D200X e outros encoders: gire para zoom, páginas ou rotação; pressione para ajuste de visualização, modo leitura ou Organizar páginas.
@@ -133,9 +135,8 @@ Os controles ao vivo precisam de uma janela do PdfCraft iniciada com um arquivo 
 
 1. Baixe `getcraft-pdfcraft-opendeck-linux-x86_64.zip` na [release mais recente](../../releases/latest).
 2. No OpenDeck, abra **Plugins** → **Install from file** e escolha o ZIP. Não extraia nem renomeie a pasta `.sdPlugin`.
-3. Arraste **PdfCraft CLI → Run PdfCraft CLI** para uma tecla.
-4. Configure o caminho da CLI, se necessário, e o vetor JSON de argumentos.
-5. Use **Test command**. O check verde indica sucesso; o alerta mostra que houve erro, cujo resumo aparece no inspetor e nos logs do OpenDeck.
+3. Arraste **PdfCraft Controls → Open PdfCraft** para uma tecla, informe um caminho absoluto para o arquivo privado de controle e pressione-a.
+4. Reutilize o arquivo em **PdfCraft App Tool** ou **PdfCraft Rotary**; mantenha **Run PdfCraft CLI** para operações headless arbitrárias.
 
 ## Configuração
 

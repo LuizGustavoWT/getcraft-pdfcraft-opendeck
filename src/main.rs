@@ -12,6 +12,7 @@ use simplelog::{ColorChoice, Config, LevelFilter, TermLogger, TerminalMode};
 use tokio::process::Command;
 
 const DEFAULT_EXECUTABLE: &str = "pdfcraft-cli";
+const DEFAULT_DESKTOP_EXECUTABLE: &str = "pdfcraft";
 const CATALOG_ARGUMENTS: &[&str] = &["tools"];
 const DEFAULT_ARGUMENTS: &str = r#"["tools"]"#;
 const MAX_ARGUMENTS: usize = 128;
@@ -646,6 +647,143 @@ async fn send_catalog(instance: &Instance, settings: &CommandSettings) {
     let _ = instance.send_to_property_inspector(reply).await;
 }
 
+/// PdfCraft publishes a per-launch, authenticated loopback endpoint through this private file.
+/// It intentionally does not expose a fixed TCP port to callers.
+#[derive(Clone, Deserialize, Serialize)]
+#[serde(default, rename_all = "camelCase")]
+struct PdfLaunchSettings {
+    executable: String,
+    control_file: String,
+    working_directory: String,
+    title: String,
+}
+
+impl Default for PdfLaunchSettings {
+    fn default() -> Self {
+        Self {
+            executable: String::new(),
+            control_file: String::new(),
+            working_directory: String::new(),
+            title: "Open PdfCraft".into(),
+        }
+    }
+}
+
+impl PdfLaunchSettings {
+    fn executable(&self) -> &str {
+        let value = self.executable.trim();
+        if value.is_empty() {
+            DEFAULT_DESKTOP_EXECUTABLE
+        } else {
+            value
+        }
+    }
+    fn arguments(&self) -> Result<Vec<String>, ExecutionError> {
+        let control_file = required(&self.control_file, "Private PdfCraft control file")?;
+        if !PathBuf::from(&control_file).is_absolute() {
+            return Err(ExecutionError::Configuration(
+                "Use an absolute path for the private PdfCraft control file.".into(),
+            ));
+        }
+        Ok(vec!["--control".into(), control_file])
+    }
+}
+
+async fn launch_pdfcraft(settings: &PdfLaunchSettings) -> Result<String, ExecutionError> {
+    let mut command = Command::new(settings.executable());
+    command
+        .args(settings.arguments()?)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .kill_on_drop(false);
+    if !settings.working_directory.trim().is_empty() {
+        command.current_dir(PathBuf::from(settings.working_directory.trim()));
+    }
+    command.spawn().map_err(|error| {
+        ExecutionError::Process(format!("Could not open {}: {error}", settings.executable()))
+    })?;
+    Ok("Starting PdfCraft with its private local control file.".into())
+}
+
+async fn report_pdf_launch(
+    instance: &Instance,
+    settings: &PdfLaunchSettings,
+    result: Result<String, ExecutionError>,
+    inspector: bool,
+) {
+    match result {
+        Ok(message) => {
+            let _ = instance.set_title(Some(settings.title.clone()), None).await;
+            let _ = instance.show_ok().await;
+            if inspector {
+                let _ = instance
+                    .send_to_property_inspector(
+                        json!({"kind":"launch","ok":true,"message":message}),
+                    )
+                    .await;
+            }
+        }
+        Err(error) => {
+            let message = error.to_string();
+            log::warn!("PdfCraft launcher failed: {message}");
+            let _ = instance.set_title(Some("Error".to_string()), None).await;
+            let _ = instance.show_alert().await;
+            if inspector {
+                let _ = instance
+                    .send_to_property_inspector(
+                        json!({"kind":"launch","ok":false,"message":message}),
+                    )
+                    .await;
+            }
+        }
+    }
+}
+
+struct LaunchPdfCraft;
+#[async_trait]
+impl Action for LaunchPdfCraft {
+    const UUID: &'static str = "wt.luizgustavo.getcraft.pdfcraft.launch";
+    type Settings = PdfLaunchSettings;
+    async fn key_down(
+        &self,
+        instance: &Instance,
+        settings: &Self::Settings,
+    ) -> OpenActionResult<()> {
+        report_pdf_launch(instance, settings, launch_pdfcraft(settings).await, false).await;
+        Ok(())
+    }
+    async fn will_appear(
+        &self,
+        instance: &Instance,
+        settings: &Self::Settings,
+    ) -> OpenActionResult<()> {
+        let _ = instance.set_title(Some(settings.title.clone()), None).await;
+        Ok(())
+    }
+    async fn send_to_plugin(
+        &self,
+        instance: &Instance,
+        settings: &Self::Settings,
+        payload: &Value,
+    ) -> OpenActionResult<()> {
+        if payload.get("request").and_then(Value::as_str) == Some("launch") {
+            let effective = payload
+                .get("settings")
+                .and_then(|value| serde_json::from_value::<PdfLaunchSettings>(value.clone()).ok())
+                .unwrap_or_else(|| settings.clone());
+            report_pdf_launch(
+                instance,
+                &effective,
+                launch_pdfcraft(&effective).await,
+                true,
+            )
+            .await;
+        }
+        Ok(())
+    }
+}
+
 struct RunPdfCraftCli;
 
 #[async_trait]
@@ -849,6 +987,7 @@ async fn main() -> OpenActionResult<()> {
         TerminalMode::Stdout,
         ColorChoice::Never,
     );
+    register_action(LaunchPdfCraft).await;
     register_action(RunPdfCraftCli).await;
     register_action(PdfWorkflow).await;
     register_action(PdfAppCommand).await;
@@ -859,6 +998,18 @@ async fn main() -> OpenActionResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn launcher_uses_the_private_control_file() {
+        let settings = PdfLaunchSettings {
+            control_file: "/tmp/pdfcraft-control.json".into(),
+            ..Default::default()
+        };
+        assert_eq!(
+            settings.arguments().unwrap(),
+            ["--control", "/tmp/pdfcraft-control.json"]
+        );
+    }
 
     #[test]
     fn accepts_a_string_argument_vector() {
