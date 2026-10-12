@@ -13,11 +13,12 @@ use tokio::process::Command;
 
 const DEFAULT_EXECUTABLE: &str = "pdfcraft-cli";
 const CATALOG_ARGUMENTS: &[&str] = &["tools"];
+const DEFAULT_ARGUMENTS: &str = r#"["tools"]"#;
 const MAX_ARGUMENTS: usize = 128;
 const MAX_ARGUMENT_BYTES: usize = 16 * 1024;
 const MAX_CATALOG_BYTES: usize = 2 * 1024 * 1024;
 
-#[derive(Clone, Default, Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize)]
 #[serde(default, rename_all = "camelCase")]
 struct CommandSettings {
     /// CLI executable or absolute path. Empty uses the app's conventional CLI name.
@@ -32,6 +33,19 @@ struct CommandSettings {
     show_output: bool,
     /// Wall-clock limit for a process. Zero uses 30 seconds; maximum is 300 seconds.
     timeout_seconds: u64,
+}
+
+impl Default for CommandSettings {
+    fn default() -> Self {
+        Self {
+            executable: String::new(),
+            arguments: DEFAULT_ARGUMENTS.to_string(),
+            working_directory: String::new(),
+            title: String::new(),
+            show_output: false,
+            timeout_seconds: 30,
+        }
+    }
 }
 
 impl CommandSettings {
@@ -236,7 +250,7 @@ fn catalog_items(stdout: &str) -> Vec<Value> {
             if let Some(id) = item.as_str() {
                 return Some(json!({"id": id, "label": id}));
             }
-            let id = ["id", "command", "tool", "name"]
+            let id = ["id", "name", "command", "tool"]
                 .into_iter()
                 .find_map(|key| item.get(key).and_then(Value::as_str))?;
             let label = item
@@ -370,6 +384,17 @@ mod tests {
     #[test]
     fn stderr_is_preferred_in_a_failure_summary() {
         assert_eq!(summary(b"normal", b"bad\nnews"), "bad news");
+    }
+
+    #[test]
+    fn has_a_usable_default_command() {
+        assert_eq!(
+            parse_arguments(&CommandSettings::default().arguments).unwrap(),
+            CATALOG_ARGUMENTS
+                .iter()
+                .map(|value| (*value).to_string())
+                .collect::<Vec<_>>()
+        );
     }
 
     #[test]
