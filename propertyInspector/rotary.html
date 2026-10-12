@@ -1,0 +1,8 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>PdfCraft Rotary</title><link rel="stylesheet" href="run.css"></head>
+<body><main>
+  <h1>PdfCraft Rotary</h1><p class="hint">Use on a D200X or any OpenDeck encoder. PdfCraft must be running with its private control file.</p>
+  <label>CLI executable<input id="executable" placeholder="pdfcraft-cli"></label><label>Private control file<input id="controlFile" placeholder="/home/me/.pdfcraft-control.json"></label>
+  <label>Turn<select id="mode"><option value="zoom">Zoom in / out</option><option value="page">Next / previous page</option><option value="rotate">Rotate selected/current pages</option></select></label><label>Steps per encoder tick<input id="step" type="number" min="1" max="32" value="1"></label>
+  <label>Push<select id="press"><option value="fit_width">Fit width, scrolling</option><option value="fit_page">Fit one page</option><option value="read_mode">Toggle read mode</option><option value="organize">Organize pages</option><option value="none">No action</option></select></label><div class="grid"><label>Key title<input id="title" value="PDF Zoom"></label><label>Timeout (seconds)<input id="timeoutSeconds" type="number" min="1" max="300" value="30"></label></div><p id="status" role="status">Turn the encoder; push it for the selected view action.</p>
+</main><script src="shared.js"></script><script>PdfDeck.bind(["executable","controlFile","mode","step","press","title","timeoutSeconds"], {mode:"zoom",step:1,press:"fit_width",title:"PDF Zoom",timeoutSeconds:30});</script></body></html>

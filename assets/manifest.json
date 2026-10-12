@@ -1,8 +1,8 @@
 {
   "Name": "PdfCraft CLI",
-  "Description": "Run PdfCraft CLI and automation commands safely from OpenDeck (Linux).",
+  "Description": "Practical PdfCraft editing, review, page, export, and rotary controls for OpenDeck (Linux).",
   "Author": "LuizGustavoWT",
-  "Version": "0.1.0",
+  "Version": "0.2.0",
   "PluginUUID": "wt.luizgustavo.getcraft.pdfcraft",
   "CodePaths": {
     "x86_64-unknown-linux-gnu": "x86_64-unknown-linux-gnu/bin/getcraft-pdfcraft-opendeck"
@@ -25,5 +25,32 @@
     "SupportedInMultiActions": true,
     "Tooltip": "Run any PdfCraft CLI command using safe JSON arguments.",
     "PropertyInspectorPath": "propertyInspector/run.html"
+  }, {
+    "UUID": "wt.luizgustavo.getcraft.pdfcraft.workflow",
+    "Name": "PDF Workflow",
+    "Icon": "assets/action",
+    "States": [{"Image":"assets/action","TitleAlignment":"bottom","TitleColor":"#FFFFFF","FontSize":"12"}],
+    "Controllers": ["Keypad", "Encoder"],
+    "SupportedInMultiActions": true,
+    "Tooltip": "Combine, extract, split, rotate, render, or audit PDFs with dedicated fields.",
+    "PropertyInspectorPath": "propertyInspector/workflow.html"
+  }, {
+    "UUID": "wt.luizgustavo.getcraft.pdfcraft.appcommand",
+    "Name": "PdfCraft App Tool",
+    "Icon": "assets/action",
+    "States": [{"Image":"assets/action","TitleAlignment":"bottom","TitleColor":"#FFFFFF","FontSize":"12"}],
+    "Controllers": ["Keypad", "Encoder"],
+    "SupportedInMultiActions": true,
+    "Tooltip": "Drive an open PdfCraft window: pages, comments, review, redaction, and save.",
+    "PropertyInspectorPath": "propertyInspector/app-command.html"
+  }, {
+    "UUID": "wt.luizgustavo.getcraft.pdfcraft.rotary",
+    "Name": "PdfCraft Rotary",
+    "Icon": "assets/action",
+    "States": [{"Image":"assets/action","TitleAlignment":"bottom","TitleColor":"#FFFFFF","FontSize":"12"}],
+    "Controllers": ["Encoder"],
+    "SupportedInMultiActions": false,
+    "Tooltip": "Turn to zoom, navigate pages, or rotate pages; push for a fitted view or workspace command.",
+    "PropertyInspectorPath": "propertyInspector/rotary.html"
   }]
 }
