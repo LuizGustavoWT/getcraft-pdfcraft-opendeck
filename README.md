@@ -1,8 +1,8 @@
-# PdfCraft CLI for OpenDeck
+# PdfCraft Controls for OpenDeck
 
 [Português do Brasil](#português-do-brasil) · [Contributing](CONTRIBUTING.md) · [PdfCraft](https://github.com/storytold/pdfcraft) · [OpenDeck](https://github.com/nekename/OpenDeck)
 
-An independent Linux-only [OpenDeck](https://github.com/nekename/OpenDeck) plugin for running every available [PdfCraft CLI](https://github.com/storytold/pdfcraft) command from a Stream Deck key. It does not bundle PdfCraft: point it at the `pdfcraft-cli` installed on your machine.
+An independent Linux-only [OpenDeck](https://github.com/nekename/OpenDeck) plugin for practical [PdfCraft](https://github.com/storytold/pdfcraft) controls: repeatable document workflows, live review and page tools, and rotary encoder control. It keeps an advanced raw-CLI action too, but the everyday actions are purpose-built rather than a command launcher. It does not bundle PdfCraft: point it at the `pdfcraft-cli` installed on your machine.
 
 Each action stores an executable path and a JSON array of arguments. The plugin launches the executable directly, without `sh -c` or another shell. That makes JSON parameters, spaces in paths, and untrusted filenames safe to pass as arguments.
 
@@ -23,6 +23,8 @@ Each action stores an executable path and a JSON array of arguments. The plugin 
 - Linux x86_64
 - OpenDeck with OpenAction-compatible plugin support
 - PdfCraft and `pdfcraft-cli` installed and available in `PATH`, or its absolute path entered in the Property Inspector
+
+Live controls need a PdfCraft window started with a private control file, for example `pdfcraft --control ~/.pdfcraft-control.json`. File workflows such as combine, split, extract, rotate, render, and audit work headlessly through `pdfcraft-cli`.
 
 ## Install
 
@@ -107,7 +109,7 @@ MIT. PdfCraft and OpenDeck are independent upstream projects with their own lice
 
 # Português do Brasil
 
-Plugin independente, somente para Linux, do [OpenDeck](https://github.com/nekename/OpenDeck) para executar todos os comandos disponíveis da [CLI do PdfCraft](https://github.com/storytold/pdfcraft) a partir de uma tecla do Stream Deck. O PdfCraft não é incluído no plugin: informe o `pdfcraft-cli` instalado na sua máquina.
+Plugin independente, somente para Linux, do [OpenDeck](https://github.com/nekename/OpenDeck) com controles práticos do [PdfCraft](https://github.com/storytold/pdfcraft): fluxos repetíveis de documento, ferramentas ao vivo de revisão e páginas e controle por encoder rotativo. A ação avançada para CLI livre continua disponível, mas as ações do dia a dia são próprias para o Stream Deck, e não apenas um lançador de comandos. O PdfCraft não é incluído no plugin: informe o `pdfcraft-cli` instalado na sua máquina.
 
 Cada ação guarda o executável e uma lista JSON de argumentos. O plugin chama o executável diretamente, sem `sh -c` nem outro shell. Assim, JSON, caminhos com espaços e nomes de arquivos não confiáveis são passados com segurança.
 
@@ -126,6 +128,8 @@ Cada ação guarda o executável e uma lista JSON de argumentos. O plugin chama 
 ## Requisitos e instalação
 
 Você precisa de Linux x86_64, OpenDeck compatível com OpenAction e PdfCraft com `pdfcraft-cli` no `PATH` (ou o caminho absoluto no Property Inspector).
+
+Os controles ao vivo precisam de uma janela do PdfCraft iniciada com um arquivo de controle privado, por exemplo `pdfcraft --control ~/.pdfcraft-control.json`. Fluxos de arquivo como combinar, dividir, extrair, girar, renderizar e auditar funcionam sem a janela, via `pdfcraft-cli`.
 
 1. Baixe `getcraft-pdfcraft-opendeck-linux-x86_64.zip` na [release mais recente](../../releases/latest).
 2. No OpenDeck, abra **Plugins** → **Install from file** e escolha o ZIP. Não extraia nem renomeie a pasta `.sdPlugin`.
